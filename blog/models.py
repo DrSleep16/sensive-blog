@@ -38,8 +38,12 @@ class PostQuerySet(models.QuerySet):
             )
         )
         for post in self:
-            tags = [post_with_tag.tags for post_with_tag in posts_count_for_tags if post_with_tag.id == post.id]
-            for tag in more_itertools.first(tags).all():
+            current_post = filter(
+                lambda x, y=post: x.id == y.id,
+                posts_count_for_tags
+            )
+            post_count_for_tags = more_itertools.first(current_post)
+            for tag in post_count_for_tags.tags.all():
                 post.total_tags = {
                     'title': tag.title,
                     'posts_with_tag': tag.posts_with_tag
