@@ -56,7 +56,7 @@ def post_detail(request, slug):
                             slug=slug)
 
     post = more_itertools.first(posts)
-    serialized_comments = Comment.objects.fetch_comments_on_post(post)
+    serialized_comments = Comment.objects.filter(post=post).select_related('author')
 
     serialized_post = {
         'title': post.title,
