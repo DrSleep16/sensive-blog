@@ -1,7 +1,7 @@
 import more_itertools
 
 from django.db.models import Count
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404, get_list_or_404
 from blog.models import Comment, Post, Tag
 
 
@@ -50,10 +50,11 @@ def index(request):
 
 
 def post_detail(request, slug):
-    posts = Post.objects.filter(slug=slug) \
-        .annotate(total_likes=Count('likes', distinct=True)) \
-        .prefetch_related('author') \
-        .fetch_posts_count_for_tags()
+    posts = get_list_or_404(Post.objects.annotate(total_likes=Count('likes', distinct=True))
+                            .prefetch_related('author')
+                            .fetch_posts_count_for_tags(),
+                            slug=slug)
+
     post = more_itertools.first(posts)
     serialized_comments = Comment.objects.fetch_comments_on_post(post)
 
@@ -66,7 +67,6 @@ def post_detail(request, slug):
         'image_url': post.image.url if post.image else None,
         'published_at': post.published_at,
         'slug': post.slug,
-        'tags': post.total_tags,
     }
 
     popular_tags = Tag.objects.popular()[:5]
@@ -89,7 +89,7 @@ def post_detail(request, slug):
 
 
 def tag_filter(request, tag_title):
-    tag = Tag.objects.get(title=tag_title)
+    tag = get_object_or_404(Tag, title=tag_title)
 
     popular_posts = Post.objects.popular()[:5] \
         .prefetch_related('author') \
