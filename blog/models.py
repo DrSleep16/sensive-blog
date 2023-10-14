@@ -18,37 +18,12 @@ class PostQuerySet(models.QuerySet):
         return fresh_posts
 
     def fetch_with_comments_count(self):
-        posts_with_comments = Post.objects.filter(
-            id__in=self
-        ).annotate(total_comments=Count('comments'))
-        post_ids_and_comments = dict(
-            posts_with_comments.values_list('id', 'total_comments')
-        )
-        for post in self:
-            post.total_comments = post_ids_and_comments[post.id]
-        return self
+        return self.annotate(total_comments=Count('comments'))
 
     def fetch_posts_count_for_tags(self):
-        posts_count_for_tags = Post.objects.filter(
-            id__in=self
-        ).prefetch_related(
-            Prefetch(
-                'tags',
-                queryset=Tag.objects.annotate(posts_with_tag=Count('posts'))
-            )
+        return self.prefetch_related(
+            Prefetch('tags', queryset=Tag.objects.annotate(posts_with_tag=Count('posts')))
         )
-        for post in self:
-            current_post = filter(
-                lambda x, y=post: x.id == y.id,
-                posts_count_for_tags
-            )
-            post_count_for_tags = more_itertools.first(current_post)
-            for tag in post_count_for_tags.tags.all():
-                post.total_tags = {
-                    'title': tag.title,
-                    'posts_with_tag': tag.posts_with_tag
-                }
-        return self
 
 
 class TagQuerySet(models.QuerySet):
