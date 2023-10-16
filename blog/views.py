@@ -1,7 +1,5 @@
-import more_itertools
-
 from django.db.models import Count
-from django.shortcuts import render, get_object_or_404, get_list_or_404
+from django.shortcuts import render, get_object_or_404
 from blog.models import Comment, Post, Tag
 
 
@@ -47,7 +45,7 @@ def index(request):
 def post_detail(request, slug):
     post = get_object_or_404(Post.objects.annotate(total_likes=Count('likes', distinct=True)), slug=slug)
 
-    serialized_comments = Comment.objects.filter(post=post).select_related('author')
+    serialized_comments = post.comments.select_related('author')
 
     serialized_post = {
         'title': post.title,
