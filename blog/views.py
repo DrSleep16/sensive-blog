@@ -45,11 +45,8 @@ def index(request):
 
 
 def post_detail(request, slug):
-    posts = get_list_or_404(Post.objects.annotate(total_likes=Count('likes', distinct=True))
-                            .prefetch_related('author'),
-                            slug=slug)
+    post = get_object_or_404(Post.objects.annotate(total_likes=Count('likes', distinct=True)), slug=slug)
 
-    post = more_itertools.first(posts)
     serialized_comments = Comment.objects.filter(post=post).select_related('author')
 
     serialized_post = {
