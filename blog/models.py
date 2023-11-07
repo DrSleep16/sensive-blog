@@ -7,42 +7,32 @@ from django.db.models import Count, Prefetch
 class PostQuerySet(models.QuerySet):
     def popular(self):
         popular_posts = self.annotate(
-            total_likes=Count('likes', distinct=True)
+            total_likes=Count('likes', distinct=True),
         ).order_by('-total_likes')
         return popular_posts
 
-    def fresh(self):
-        fresh_posts = self.order_by('-published_at')
-        return fresh_posts
+    def fetch_with_total_comments(self):
+        popular_posts_ids = [post.id for post in self]
 
-    def fetch_with_comments_count(self):
-        return self.annotate(total_comments=Count('comments'))
+        posts_with_comments = Post.objects.filter(id__in=popular_posts_ids).annotate(total_comments=Count('comments'))
+        ids_and_comments = posts_with_comments.values_list('id', 'total_comments')
+        count_for_id = dict(ids_and_comments)
+
+        for post in self:
+            post.total_comments = count_for_id[post.id]
+
+        return list(self)
 
     def fetch_posts_count_for_tags(self):
         return self.prefetch_related(
-            Prefetch('tags', queryset=Tag.objects.annotate(posts_with_tag=Count('posts')))
+            Prefetch('tags', queryset=Tag.objects.annotate(Count('posts')))
         )
 
 
 class TagQuerySet(models.QuerySet):
     def popular(self):
-        popular_tags = self.annotate(
-            total_posts=Count('posts', distinct=True)
-        ).order_by('-total_posts')
+        popular_tags = self.annotate(Count('posts')).order_by('-posts__count')
         return popular_tags
-
-
-class CommentQuerySet(models.QuerySet):
-    def fetch_comments_on_post(self, post):
-        comments_by_post = self.select_related().filter(post=post)
-        serialized_comments = []
-        for comment in comments_by_post:
-            serialized_comments.append({
-                'text': comment.text,
-                'published_at': comment.published_at,
-                'author': comment.author.username,
-            })
-        return serialized_comments
 
 
 class Post(models.Model):
@@ -115,8 +105,6 @@ class Comment(models.Model):
 
     text = models.TextField('Текст комментария')
     published_at = models.DateTimeField('Дата и время публикации')
-
-    objects = CommentQuerySet.as_manager()
 
     def __str__(self):
         return f'{self.author.username} under {self.post.title}'
